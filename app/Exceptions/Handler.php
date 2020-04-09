@@ -2,8 +2,10 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
+use App\Services\Exceptions\ExceptionService;
+use App\Services\ApiResponse\ApiResponseService;
+use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 
 class Handler extends ExceptionHandler
 {
@@ -42,14 +44,25 @@ class Handler extends ExceptionHandler
     /**
      * Render an exception into an HTTP response.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Throwable  $exception
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @param \Illuminate\Http\Request $request
+     * @param \Throwable $exception
+     * @return \Illuminate\Http\JsonResponse|\Symfony\Component\HttpFoundation\Response
      *
      * @throws \Throwable
      */
     public function render($request, Throwable $exception)
     {
-        return parent::render($request, $exception);
+        if (!in_array('api', $request->route()->computedMiddleware)) {
+            return parent::render($request, $exception);
+        }
+
+        $exceptionService = app(ExceptionService::class);
+        $apiResponseService = app(ApiResponseService::class);
+        $exception = $exceptionService->getException($exception);
+
+        return $apiResponseService->errors(
+            $exception->errors(),
+            $exception->code()
+        );
     }
 }
